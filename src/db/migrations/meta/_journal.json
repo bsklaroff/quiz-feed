@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1749766689837,
+      "tag": "0000_create_webpage_and_quiz_tables",
+      "breakpoints": true
+    }
+  ]
+}
