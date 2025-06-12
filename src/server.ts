@@ -33,18 +33,29 @@ app.get('/api/quiz/:quizId', async (req, res) => {
       return
     }
 
-    const [quiz] = (
-      await db.select()
+    const [result] = (
+      await db.select({
+        quiz: quizTable,
+        webpage: webpageTable,
+      })
       .from(quizTable)
+      .innerJoin(webpageTable, eq(quizTable.sourceId, webpageTable.id))
       .where(eq(quizTable.id, quizId))
       .limit(1)
     )
-    if (!quiz) {
+    if (!result) {
       res.status(404).json({ error: 'Quiz not found' })
       return
     }
 
-    res.json(quiz)
+    res.json({
+      ...result.quiz,
+      source: {
+        url: result.webpage.url,
+        title: result.webpage.title,
+        favicon: result.webpage.favicon,
+      },
+    })
   } catch (error) {
     console.error('Error fetching quiz:', error)
     res.status(500).json({ error: 'Failed to fetch quiz' })
