@@ -15,6 +15,13 @@
       "when": 1749811635222,
       "tag": "0001_add_deleted_items_to_quiz",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1749818439106,
+      "tag": "0002_allow_webpage_favicon_to_be_null",
+      "breakpoints": true
     }
   ]
 }

@@ -6,7 +6,7 @@ export const webpageTable = pgTable('webpage', {
   url: text().notNull(),
   title: text().notNull(),
   text: text().notNull(),
-  favicon: text().notNull(),
+  favicon: text(),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   index().on(table.url),

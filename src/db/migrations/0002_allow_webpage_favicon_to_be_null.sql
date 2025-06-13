@@ -1,0 +1,1 @@
+ALTER TABLE "webpage" ALTER COLUMN "favicon" DROP NOT NULL;
