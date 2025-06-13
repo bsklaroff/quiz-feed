@@ -23,10 +23,10 @@ function Quiz() {
   const [showResults, setShowResults] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [scheduledForDeletion, setScheduledForDeletion] = useState<Set<number>>(new Set())
+  const [additionalInstructions, setAdditionalInstructions] = useState('')
 
-  useEffect(() => {
-    if (!quizId) return
-
+  const reloadQuiz = (quizId: string) => {
     fetch(`/api/quiz/${quizId}`)
       .then((res) => {
         if (!res.ok) throw new Error('Quiz not found')
@@ -35,12 +35,21 @@ function Quiz() {
       .then((data: QuizWithSource) => {
         setQuiz(data)
         setResponses(new Array(data.items.length).fill({ selectedOption: null, isCorrect: null }))
+        setCurrentQuestion(0)
+        setScheduledForDeletion(new Set())
+        setAdditionalInstructions('')
+        setShowResults(false)
         setLoading(false)
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : 'An error occurred')
         setLoading(false)
       })
+  }
+
+  useEffect(() => {
+    if (!quizId) return
+    reloadQuiz(quizId)
   }, [quizId])
 
   const handleOptionSelect = (optionIndex: number) => {
@@ -61,9 +70,50 @@ function Quiz() {
   }
 
   const restartQuiz = () => {
-    setCurrentQuestion(0)
     setResponses(new Array(quiz!.items.length).fill({ selectedOption: null, isCorrect: null }))
+    setCurrentQuestion(0)
+    setScheduledForDeletion(new Set())
+    setAdditionalInstructions('')
     setShowResults(false)
+  }
+
+  const toggleDeletion = (index: number) => {
+    const newScheduled = new Set(scheduledForDeletion)
+    if (newScheduled.has(index)) {
+      newScheduled.delete(index)
+    } else {
+      newScheduled.add(index)
+    }
+    setScheduledForDeletion(newScheduled)
+  }
+
+  const replaceSelectedQuestions = async () => {
+    if (!quiz || scheduledForDeletion.size === 0) return
+
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/edit_quiz`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          quizId: quiz.id,
+          deletedItemIdxs: Array.from(scheduledForDeletion),
+          additionalInstructions: additionalInstructions.trim(),
+        }),
+      })
+
+      if (response.ok) {
+        reloadQuiz(quiz.id)
+      } else {
+        setError('Failed to update quiz')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (loading) return <div className="flex items-center justify-center min-h-screen text-lg">Loading quiz...</div>
@@ -85,28 +135,51 @@ function Quiz() {
         </div>
 
         <div className="space-y-6 mb-8">
-          {quiz.items.map((item, index) => (
-            <div key={index} className={`border rounded-lg p-6 ${responses[index].isCorrect ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50'}`}>
-              <h3 className="font-semibold text-lg mb-3">Question {index + 1}</h3>
-              <p className="mb-4 text-gray-800">{item.stem}</p>
-              <div className="space-y-2 mb-4">
-                {item.options.map((option, optionIndex) => (
-                  <div
-                    key={optionIndex}
-                    className={`p-3 rounded border ${
-                      optionIndex === item.correctOption
-                        ? 'border-green-500 bg-green-100 text-green-800'
-                        : optionIndex === responses[index].selectedOption
-                        ? 'border-red-500 bg-red-100 text-red-800'
-                        : 'border-gray-200 bg-white'
-                    }`}
-                  >
-                    {option}
-                  </div>
-                ))}
-              </div>
-              <div className="text-sm text-gray-600 bg-gray-100 p-3 rounded">
-                <strong>Source:</strong> &quot;{item.sourceSnippet}&quot;
+          {quiz.items.map((item, index) => {
+            const isScheduledForDeletion = scheduledForDeletion.has(index)
+            return (
+              <div key={index} className={`border rounded-lg p-6 relative ${
+                isScheduledForDeletion
+                  ? 'border-red-500 bg-red-100'
+                  : responses[index].isCorrect
+                    ? 'border-green-300 bg-green-50'
+                    : 'border-red-300 bg-red-50'
+              }`}>
+                <button
+                  onClick={() => toggleDeletion(index)}
+                  className={`absolute top-4 right-4 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+                    isScheduledForDeletion
+                      ? 'bg-red-600 text-white hover:bg-red-700'
+                      : 'bg-gray-200 text-gray-600 hover:bg-red-200 hover:text-red-600'
+                  }`}
+                  title={isScheduledForDeletion ? 'Unschedule for deletion' : 'Schedule for deletion'}
+                >
+                  ×
+                </button>
+                <h3 className={`font-semibold text-lg mb-3 ${isScheduledForDeletion ? 'line-through' : ''}`}>
+                  Question {index + 1}
+                </h3>
+                <p className={`mb-4 text-gray-800 ${isScheduledForDeletion ? 'line-through' : ''}`}>
+                  {item.stem}
+                </p>
+                <div className="space-y-2 mb-4">
+                  {item.options.map((option, optionIndex) => (
+                    <div
+                      key={optionIndex}
+                      className={`p-3 rounded border ${
+                        optionIndex === item.correctOption
+                          ? 'border-green-500 bg-green-100 text-green-800'
+                          : optionIndex === responses[index].selectedOption
+                          ? 'border-red-500 bg-red-100 text-red-800'
+                          : 'border-gray-200 bg-white'
+                      } ${isScheduledForDeletion ? 'line-through' : ''}`}
+                    >
+                      {option}
+                    </div>
+                  ))}
+                </div>
+                <div className={`text-sm text-gray-600 bg-gray-100 p-3 rounded ${isScheduledForDeletion ? 'line-through' : ''}`}>
+                  <strong>Source:</strong> &quot;{item.sourceSnippet}&quot;
                 <a
                   href={quiz.source.url}
                   target="_blank"
@@ -115,18 +188,39 @@ function Quiz() {
                 >
                   <img src={quiz.source.favicon} alt="" className="w-3 h-3" />
                   {quiz.source.title}
-                </a>
+                  </a>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
+
+        {scheduledForDeletion.size > 0 && (
+          <div className="mb-6">
+            <label htmlFor="additional-instructions" className="block text-sm font-medium text-gray-700 mb-2">
+              Additional instructions for replacement questions (optional):
+            </label>
+            <textarea
+              id="additional-instructions"
+              value={additionalInstructions}
+              onChange={(e) => setAdditionalInstructions(e.target.value)}
+              placeholder="e.g. Focus more on..."
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-vertical"
+              rows={3}
+            />
+          </div>
+        )}
 
         <div className="text-center">
           <button
-            onClick={restartQuiz}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            onClick={scheduledForDeletion.size > 0 ? replaceSelectedQuestions : restartQuiz}
+            className={`font-semibold py-3 px-6 rounded-lg transition-colors ${
+              scheduledForDeletion.size > 0
+                ? 'bg-red-500 hover:bg-red-600 text-white'
+                : 'bg-blue-500 hover:bg-blue-600 text-white'
+            }`}
           >
-            Restart Quiz
+            {scheduledForDeletion.size > 0 ? 'Replace Selected Questions and Restart' : 'Restart Quiz'}
           </button>
         </div>
       </div>

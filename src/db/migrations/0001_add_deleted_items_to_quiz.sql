@@ -1,0 +1,1 @@
+ALTER TABLE "quiz" ADD COLUMN "deleted_items" json DEFAULT '[]'::json NOT NULL;

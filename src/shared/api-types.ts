@@ -5,3 +5,9 @@ export interface CreateQuizReq {
 export interface CreateQuizRes {
   quizId: string
 }
+
+export interface EditQuizReq {
+  quizId: string
+  deletedItemIdxs: number[]
+  additionalInstructions: string
+}

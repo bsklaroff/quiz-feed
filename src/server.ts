@@ -8,8 +8,8 @@ import Exa from 'exa-js'
 
 import db from './db/engine.ts'
 import { webpageTable, quizTable } from './db/schema.ts'
-import { CreateQuizReq, CreateQuizRes } from './shared/api-types.ts'
-import { createQuiz } from './anthropic-api.ts'
+import { CreateQuizReq, CreateQuizRes, EditQuizReq } from './shared/api-types.ts'
+import { createQuiz, editQuiz } from './anthropic-api.ts'
 
 const exa = new Exa(process.env.QF_EXA_API_KEY)
 
@@ -34,10 +34,7 @@ app.get('/api/quiz/:quizId', async (req, res) => {
     }
 
     const [result] = (
-      await db.select({
-        quiz: quizTable,
-        webpage: webpageTable,
-      })
+      await db.select({ quiz: quizTable, webpage: webpageTable })
       .from(quizTable)
       .innerJoin(webpageTable, eq(quizTable.sourceId, webpageTable.id))
       .where(eq(quizTable.id, quizId))
@@ -111,6 +108,38 @@ app.post('/api/create_quiz', async (req, res) => {
   } catch (error) {
     console.error('Error creating quiz:', error)
     res.status(500).json({ error: 'Failed to create quiz' })
+  }
+})
+
+app.post('/api/edit_quiz', async (req, res) => {
+  try {
+    const { quizId, deletedItemIdxs, additionalInstructions } = req.body as EditQuizReq
+    if (!quizId || !deletedItemIdxs) {
+      res.status(400).json({ error: 'quizId and deletedItemIdxs are required' })
+      return
+    }
+
+    const [result] = (
+      await db.select({ quiz: quizTable, webpage: webpageTable })
+      .from(quizTable)
+      .innerJoin(webpageTable, eq(quizTable.sourceId, webpageTable.id))
+      .where(eq(quizTable.id, quizId))
+      .limit(1)
+    )
+    if (!result) {
+      res.status(404).json({ error: 'Quiz not found' })
+      return
+    }
+
+    const quizToUpdate = await editQuiz(result.webpage, result.quiz, deletedItemIdxs, additionalInstructions)
+    await db.update(quizTable)
+      .set(quizToUpdate)
+      .where(eq(quizTable.id, result.quiz.id))
+
+    res.status(200).json({ success: true })
+  } catch (error) {
+    console.error('Error editing quiz:', error)
+    res.status(500).json({ error: 'Failed to edit quiz' })
   }
 })
 

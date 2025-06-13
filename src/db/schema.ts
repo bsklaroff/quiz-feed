@@ -16,16 +16,17 @@ export type WebpageInsert = InferInsertModel<typeof webpageTable>
 export type Webpage = InferSelectModel<typeof webpageTable>
 
 export interface QuizItem {
-  stem: string,
-  options: string[],
-  correctOption: number,
-  sourceSnippet: string,
+  stem: string
+  options: string[]
+  correctOption: number
+  sourceSnippet: string
 }
 
 export const quizTable = pgTable('quiz', {
   id: uuid().primaryKey().defaultRandom(),
   title: text().notNull(),
   items: json().$type<QuizItem[]>().notNull(),
+  deletedItems: json().$type<QuizItem[]>().notNull().default([]),
   sourceId: uuid().references(() => webpageTable.id).notNull(),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 })
