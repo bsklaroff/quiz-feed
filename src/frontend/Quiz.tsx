@@ -1,14 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router'
-import { Quiz as QuizType } from '../db/schema'
-
-interface QuizWithSource extends QuizType {
-  source: {
-    url: string
-    title: string
-    favicon: string
-  }
-}
+import { GetQuizRes } from '../shared/api-types'
 
 interface QuizResponse {
   selectedOption: number | null
@@ -17,7 +9,7 @@ interface QuizResponse {
 
 function Quiz() {
   const { quizId } = useParams<{ quizId: string }>()
-  const [quiz, setQuiz] = useState<QuizWithSource | null>(null)
+  const [quiz, setQuiz] = useState<GetQuizRes | null>(null)
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [responses, setResponses] = useState<QuizResponse[]>([])
   const [showResults, setShowResults] = useState(false)
@@ -32,7 +24,7 @@ function Quiz() {
         if (!res.ok) throw new Error('Quiz not found')
         return res.json()
       })
-      .then((data: QuizWithSource) => {
+      .then((data: GetQuizRes) => {
         setQuiz(data)
         setResponses(new Array(data.items.length).fill({ selectedOption: null, isCorrect: null }))
         setCurrentQuestion(0)
@@ -186,7 +178,7 @@ function Quiz() {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-full hover:bg-blue-100 hover:border-blue-300 transition-colors no-underline ml-1"
                 >
-                  <img src={quiz.source.favicon} alt="" className="w-3 h-3" />
+                  {quiz.source.favicon && <img src={quiz.source.favicon} alt="" className="w-3 h-3" />}
                   {quiz.source.title}
                   </a>
                 </div>
@@ -279,7 +271,7 @@ function Quiz() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-full hover:bg-blue-100 hover:border-blue-300 transition-colors no-underline ml-1"
               >
-                <img src={quiz.source.favicon} alt="" className="w-3 h-3" />
+{quiz.source.favicon && <img src={quiz.source.favicon} alt="" className="w-3 h-3" />}
                 {quiz.source.title}
               </a>
             </div>

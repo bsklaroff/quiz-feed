@@ -1,5 +1,6 @@
 import { pgTable, uuid, timestamp, text, json, index } from 'drizzle-orm/pg-core'
 import { InferInsertModel, InferSelectModel } from 'drizzle-orm'
+import { QuizItem } from '../shared/api-types.js'
 
 export const webpageTable = pgTable('webpage', {
   id: uuid().primaryKey().defaultRandom(),
@@ -15,12 +16,6 @@ export const webpageTable = pgTable('webpage', {
 export type WebpageInsert = InferInsertModel<typeof webpageTable>
 export type Webpage = InferSelectModel<typeof webpageTable>
 
-export interface QuizItem {
-  stem: string
-  options: string[]
-  correctOption: number
-  sourceSnippet: string
-}
 
 export const quizTable = pgTable('quiz', {
   id: uuid().primaryKey().defaultRandom(),

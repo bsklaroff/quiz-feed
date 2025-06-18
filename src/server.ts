@@ -8,7 +8,7 @@ import Exa from 'exa-js'
 
 import db from './db/engine.ts'
 import { webpageTable, quizTable } from './db/schema.ts'
-import { CreateQuizReq, CreateQuizRes, EditQuizReq } from './shared/api-types.ts'
+import { CreateQuizReq, CreateQuizRes, EditQuizReq, EditQuizRes, GetQuizRes } from './shared/api-types.ts'
 import { createQuiz, editQuiz } from './anthropic-api.ts'
 
 const exa = new Exa(process.env.QF_EXA_API_KEY)
@@ -52,7 +52,7 @@ app.get('/api/quiz/:quizId', async (req, res) => {
         title: result.webpage.title,
         favicon: result.webpage.favicon,
       },
-    })
+    } as GetQuizRes)
   } catch (error) {
     console.error('Error fetching quiz:', error)
     res.status(500).json({ error: 'Failed to fetch quiz' })
@@ -136,7 +136,7 @@ app.post('/api/edit_quiz', async (req, res) => {
       .set(quizToUpdate)
       .where(eq(quizTable.id, result.quiz.id))
 
-    res.status(200).json({ success: true })
+    res.status(200).json({ success: true } as EditQuizRes)
   } catch (error) {
     console.error('Error editing quiz:', error)
     res.status(500).json({ error: 'Failed to edit quiz' })

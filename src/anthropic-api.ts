@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { Webpage, QuizInsert, QuizItem, Quiz } from './db/schema'
+import { Webpage, QuizInsert, Quiz } from './db/schema'
+import { QuizItem } from './shared/api-types'
 
 const anthropic = new Anthropic({ apiKey: process.env.QF_ANTHROPIC_API_KEY })
 
