@@ -1,12 +1,32 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
-import { CreateQuizReq, CreateQuizRes } from '../shared/api-types'
+import { CreateQuizReq, CreateQuizRes, GetQuizzesRes } from '../shared/api-types'
 
 function Home() {
   const navigate = useNavigate()
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [recentQuizzes, setRecentQuizzes] = useState<GetQuizzesRes>([])
+  const [quizzesLoading, setQuizzesLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchRecentQuizzes = async () => {
+      try {
+        const response = await fetch('/api/quizzes')
+        if (response.ok) {
+          const quizzes = await response.json() as GetQuizzesRes
+          setRecentQuizzes(quizzes)
+        }
+      } catch (err) {
+        console.error('Failed to fetch recent quizzes:', err)
+      } finally {
+        setQuizzesLoading(false)
+      }
+    }
+
+    void fetchRecentQuizzes()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -69,6 +89,33 @@ function Home() {
             {loading ? 'Creating Quiz...' : 'Create Quiz'}
           </button>
         </form>
+
+        {/* Recent Quizzes Section */}
+        <div className="mt-12 pt-8 border-t border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Quizzes</h2>
+          {quizzesLoading ? (
+            <div className="text-center text-gray-500">Loading recent quizzes...</div>
+          ) : recentQuizzes.length === 0 ? (
+            <div className="text-center text-gray-500">No quizzes created yet</div>
+          ) : (
+            <div className="space-y-3">
+              {recentQuizzes.slice(0, 5).map((quiz) => (
+                <div
+                  key={quiz.id}
+                  onClick={() => { void navigate(`/quiz/${quiz.id}`) }}
+                  className="p-4 bg-white rounded-lg shadow-sm border border-gray-200 hover:border-blue-300 hover:shadow-md cursor-pointer transition-all duration-200"
+                >
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-gray-900">{quiz.title}</h3>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {new Date(quiz.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -3,12 +3,12 @@ import morgan from 'morgan'
 import { createServer } from 'node:http'
 import { parseArgs } from 'node:util'
 import ViteExpress from 'vite-express'
-import { eq } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 import Exa from 'exa-js'
 
 import db from './db/engine.ts'
 import { webpageTable, quizTable } from './db/schema.ts'
-import { CreateQuizReq, CreateQuizRes, EditQuizReq, EditQuizRes, GetQuizRes } from './shared/api-types.ts'
+import { CreateQuizReq, CreateQuizRes, EditQuizReq, EditQuizRes, GetQuizRes, GetQuizzesRes } from './shared/api-types.ts'
 import { createQuiz, editQuiz } from './anthropic-api.ts'
 
 const exa = new Exa(process.env.QF_EXA_API_KEY)
@@ -24,6 +24,32 @@ const server = createServer((req, res) => { void app(req, res) })
 
 app.use(express.json())
 app.use(morgan('dev'))
+
+app.get('/api/quizzes', async (_req, res) => {
+  try {
+    const results = await db.select({
+      quiz: quizTable,
+      webpage: webpageTable,
+    })
+    .from(quizTable)
+    .innerJoin(webpageTable, eq(quizTable.sourceId, webpageTable.id))
+    .orderBy(desc(quizTable.createdAt))
+
+    const quizzes = results.map((result) => ({
+      ...result.quiz,
+      source: {
+        url: result.webpage.url,
+        title: result.webpage.title,
+        favicon: result.webpage.favicon,
+      },
+    }))
+
+    res.json(quizzes as GetQuizzesRes)
+  } catch (error) {
+    console.error('Error fetching quizzes:', error)
+    res.status(500).json({ error: 'Failed to fetch quizzes' })
+  }
+})
 
 app.get('/api/quiz/:quizId', async (req, res) => {
   try {

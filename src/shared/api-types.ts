@@ -36,3 +36,5 @@ export interface GetQuizRes {
     favicon: string | null
   }
 }
+
+export type GetQuizzesRes = GetQuizRes[]
