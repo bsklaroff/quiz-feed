@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, useSearchParams } from 'react-router'
+import { useParams, useSearchParams, useNavigate } from 'react-router'
 import { GetQuizRes, PublishQuizReq, PublishQuizRes } from '../shared/api-types'
+import LoadingDots from './LoadingDots'
 
 interface QuizResponse {
   selectedOption: number | null
@@ -10,6 +11,7 @@ interface QuizResponse {
 function Quiz() {
   const { quizId } = useParams<{ quizId: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [quiz, setQuiz] = useState<GetQuizRes | null>(null)
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [responses, setResponses] = useState<QuizResponse[]>([])
@@ -182,7 +184,7 @@ function Quiz() {
     return (
       <div className="max-w-4xl mx-auto p-6">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-4">Quiz Complete!</h1>
+          <h1 className="text-3xl mb-4">{quiz.title}</h1>
           <div className="text-2xl font-semibold text-blue-600">
             Score: {score} / {quiz.items.length} ({Math.round((score / quiz.items.length) * 100)}%)
           </div>
@@ -207,7 +209,7 @@ function Quiz() {
               }`}>
                 <button
                   onClick={() => toggleDeletion(index)}
-                  className={`absolute top-4 right-4 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+                  className={`absolute top-4 right-4 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold transition-colors cursor-pointer ${
                     isScheduledForDeletion
                       ? 'bg-red-600 text-white hover:bg-red-700'
                       : 'bg-gray-200 text-gray-600 hover:bg-red-200 hover:text-red-600'
@@ -245,7 +247,7 @@ function Quiz() {
                     href={quiz.source.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-full hover:bg-blue-100 hover:border-blue-300 transition-colors no-underline ml-1"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-full hover:bg-blue-100 hover:border-blue-300 transition-colors no-underline ml-1 cursor-pointer"
                   >
                     {quiz.source.favicon && <img src={quiz.source.favicon} alt="" className="w-3 h-3" />}
                     {quiz.source.title}
@@ -255,7 +257,7 @@ function Quiz() {
                   <div className="text-center py-4">
                     <button
                       onClick={() => revealAnswer(index)}
-                      className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded transition-colors"
+                      className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded transition-colors cursor-pointer"
                     >
                       View Answer
                     </button>
@@ -290,11 +292,11 @@ function Quiz() {
               actionLoading !== null
                 ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
                 : scheduledForDeletion.size > 0
-                  ? 'bg-red-500 hover:bg-red-600 text-white'
-                  : 'bg-blue-500 hover:bg-blue-600 text-white'
+                  ? 'bg-red-500 hover:bg-red-600 text-white cursor-pointer'
+                  : 'bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
             }`}
           >
-            {actionLoading === 'replace' ? 'Loading...' : scheduledForDeletion.size > 0 ? 'Replace Selected Questions' : 'Restart Quiz'}
+            {actionLoading === 'replace' ? <LoadingDots text="Loading" /> : scheduledForDeletion.size > 0 ? 'Replace Selected Questions' : 'Restart Quiz'}
           </button>
           <button
             onClick={() => { void togglePublish() }}
@@ -303,11 +305,17 @@ function Quiz() {
               actionLoading !== null
                 ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
                 : quiz.publishedAt
-                  ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                  : 'bg-green-500 hover:bg-green-600 text-white'
+                  ? 'bg-orange-500 hover:bg-orange-600 text-white cursor-pointer'
+                  : 'bg-green-500 hover:bg-green-600 text-white cursor-pointer'
             }`}
           >
-            {actionLoading === 'publish' ? 'Loading...' : quiz.publishedAt ? 'Unpublish' : 'Publish'}
+            {quiz.publishedAt ? 'Unpublish from Home Page' : 'Publish to Home Page'}
+          </button>
+          <button
+            onClick={() => { void navigate('/') }}
+            className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors cursor-pointer"
+          >
+            Go to Home Page
           </button>
         </div>
       </div>
@@ -344,7 +352,9 @@ function Quiz() {
                     : 'border-red-500 bg-red-50 text-red-800'
                   : currentResponse.selectedOption !== null && index === currentItem.correctOption
                   ? 'border-green-500 bg-green-50 text-green-800'
-                  : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50'
+                  : currentResponse.selectedOption !== null
+                  ? 'border-gray-200 bg-white cursor-not-allowed'
+                  : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50 cursor-pointer'
               }`}
               disabled={currentResponse.selectedOption !== null}
             >
@@ -364,7 +374,7 @@ function Quiz() {
                 href={quiz.source.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-full hover:bg-blue-100 hover:border-blue-300 transition-colors no-underline ml-1"
+                className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-full hover:bg-blue-100 hover:border-blue-300 transition-colors no-underline ml-1 cursor-pointer"
               >
 {quiz.source.favicon && <img src={quiz.source.favicon} alt="" className="w-3 h-3" />}
                 {quiz.source.title}
@@ -372,7 +382,7 @@ function Quiz() {
             </div>
             <button
               onClick={nextQuestion}
-              className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded transition-colors"
+              className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded transition-colors cursor-pointer"
             >
               {currentQuestion === quiz.items.length - 1 ? 'View Results' : 'Next Question'}
             </button>

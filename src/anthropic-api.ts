@@ -45,8 +45,6 @@ Important requirements:
   // Strip JSON code block wrapper if it exists
   responseText = responseText.replace(/^```(?:json)?\n?|\n?```$/g, '')
 
-  console.log(responseText)
-
   const quizToInsert = {
     sourceId: webpage.id,
     ...JSON.parse(responseText),
@@ -125,8 +123,6 @@ Important requirements:
   let responseText = res.content[0].text
   // Strip JSON code block wrapper if it exists
   responseText = responseText.replace(/^```(?:json)?\n?|\n?```$/g, '')
-
-  console.log(responseText)
 
   const newItems = JSON.parse(responseText) as QuizItem[]
   const quizToUpdate = {
