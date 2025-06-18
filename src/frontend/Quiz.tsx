@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router'
-import { GetQuizRes } from '../shared/api-types'
+import { GetQuizRes, PublishQuizReq, PublishQuizRes } from '../shared/api-types'
 
 interface QuizResponse {
   selectedOption: number | null
@@ -13,7 +13,8 @@ function Quiz() {
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [responses, setResponses] = useState<QuizResponse[]>([])
   const [showResults, setShowResults] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState<'replace' | 'publish' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [scheduledForDeletion, setScheduledForDeletion] = useState<Set<number>>(new Set())
   const [additionalInstructions, setAdditionalInstructions] = useState('')
@@ -31,11 +32,11 @@ function Quiz() {
         setScheduledForDeletion(new Set())
         setAdditionalInstructions('')
         setShowResults(false)
-        setLoading(false)
+        setInitialLoading(false)
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : 'An error occurred')
-        setLoading(false)
+        setInitialLoading(false)
       })
   }
 
@@ -83,7 +84,7 @@ function Quiz() {
     if (!quiz || scheduledForDeletion.size === 0) return
 
     try {
-      setLoading(true)
+      setActionLoading('replace')
       const response = await fetch(`/api/edit_quiz`, {
         method: 'POST',
         headers: {
@@ -104,11 +105,39 @@ function Quiz() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
-      setLoading(false)
+      setActionLoading(null)
     }
   }
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen text-lg">Loading quiz...</div>
+  const togglePublish = async () => {
+    if (!quiz) return
+
+    try {
+      setActionLoading('publish')
+      const response = await fetch(`/api/toggle_publish_quiz`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          quizId: quiz.id,
+        } as PublishQuizReq),
+      })
+
+      if (response.ok) {
+        const data = await response.json() as PublishQuizRes
+        setQuiz(prev => prev ? { ...prev, publishedAt: data.publishedAt } : null)
+      } else {
+        setError('Failed to publish/unpublish quiz')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  if (initialLoading) return <div className="flex items-center justify-center min-h-screen text-lg">Loading quiz...</div>
   if (error) return <div className="flex items-center justify-center min-h-screen text-red-600">Error: {error}</div>
   if (!quiz) return <div className="flex items-center justify-center min-h-screen text-red-600">Quiz not found</div>
 
@@ -203,16 +232,32 @@ function Quiz() {
           </div>
         )}
 
-        <div className="text-center">
+        <div className="text-center space-x-4">
           <button
             onClick={scheduledForDeletion.size > 0 ? replaceSelectedQuestions : restartQuiz}
+            disabled={actionLoading !== null}
             className={`font-semibold py-3 px-6 rounded-lg transition-colors ${
-              scheduledForDeletion.size > 0
-                ? 'bg-red-500 hover:bg-red-600 text-white'
-                : 'bg-blue-500 hover:bg-blue-600 text-white'
+              actionLoading !== null
+                ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                : scheduledForDeletion.size > 0
+                  ? 'bg-red-500 hover:bg-red-600 text-white'
+                  : 'bg-blue-500 hover:bg-blue-600 text-white'
             }`}
           >
-            {scheduledForDeletion.size > 0 ? 'Replace Selected Questions and Restart' : 'Restart Quiz'}
+            {actionLoading === 'replace' ? 'Loading...' : scheduledForDeletion.size > 0 ? 'Replace Selected Questions and Restart' : 'Restart Quiz'}
+          </button>
+          <button
+            onClick={() => { void togglePublish() }}
+            disabled={actionLoading !== null}
+            className={`font-semibold py-3 px-6 rounded-lg transition-colors ${
+              actionLoading !== null
+                ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                : quiz.publishedAt
+                  ? 'bg-orange-500 hover:bg-orange-600 text-white'
+                  : 'bg-green-500 hover:bg-green-600 text-white'
+            }`}
+          >
+            {actionLoading === 'publish' ? 'Loading...' : quiz.publishedAt ? 'Unpublish' : 'Publish'}
           </button>
         </div>
       </div>

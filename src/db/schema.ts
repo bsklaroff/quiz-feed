@@ -24,6 +24,7 @@ export const quizTable = pgTable('quiz', {
   deletedItems: json().$type<QuizItem[]>().notNull().default([]),
   sourceId: uuid().references(() => webpageTable.id).notNull(),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  publishedAt: timestamp({ withTimezone: true }),
 })
 
 export type QuizInsert = InferInsertModel<typeof quizTable>

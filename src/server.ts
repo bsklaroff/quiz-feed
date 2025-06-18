@@ -3,12 +3,12 @@ import morgan from 'morgan'
 import { createServer } from 'node:http'
 import { parseArgs } from 'node:util'
 import ViteExpress from 'vite-express'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, isNotNull } from 'drizzle-orm'
 import Exa from 'exa-js'
 
 import db from './db/engine.ts'
 import { webpageTable, quizTable } from './db/schema.ts'
-import { CreateQuizReq, CreateQuizRes, EditQuizReq, EditQuizRes, GetQuizRes, GetQuizzesRes } from './shared/api-types.ts'
+import { SuccessRes, CreateQuizReq, CreateQuizRes, EditQuizReq, GetQuizRes, GetQuizzesRes, PublishQuizReq, PublishQuizRes } from './shared/api-types.ts'
 import { createQuiz, editQuiz } from './anthropic-api.ts'
 
 const exa = new Exa(process.env.QF_EXA_API_KEY)
@@ -33,6 +33,7 @@ app.get('/api/quizzes', async (_req, res) => {
     })
     .from(quizTable)
     .innerJoin(webpageTable, eq(quizTable.sourceId, webpageTable.id))
+    .where(isNotNull(quizTable.publishedAt))
     .orderBy(desc(quizTable.createdAt))
 
     const quizzes = results.map((result) => ({
@@ -162,10 +163,41 @@ app.post('/api/edit_quiz', async (req, res) => {
       .set(quizToUpdate)
       .where(eq(quizTable.id, result.quiz.id))
 
-    res.status(200).json({ success: true } as EditQuizRes)
+    res.json({ success: true } as SuccessRes)
   } catch (error) {
     console.error('Error editing quiz:', error)
     res.status(500).json({ error: 'Failed to edit quiz' })
+  }
+})
+
+app.post('/api/toggle_publish_quiz', async (req, res) => {
+  try {
+    const { quizId } = req.body as PublishQuizReq
+    if (!quizId) {
+      res.status(400).json({ error: 'quizId is required' })
+      return
+    }
+
+    const [quiz] = (
+      await db.select()
+      .from(quizTable)
+      .where(eq(quizTable.id, quizId))
+      .limit(1)
+    )
+    if (!quiz) {
+      res.status(404).json({ error: 'Quiz not found' })
+      return
+    }
+
+    const newPublishedAt = quiz.publishedAt ? null : new Date()
+    await db.update(quizTable)
+      .set({ publishedAt: newPublishedAt })
+      .where(eq(quizTable.id, quizId))
+
+    res.json({ publishedAt: newPublishedAt } as PublishQuizRes)
+  } catch (error) {
+    console.error('Error publishing/unpublishing quiz:', error)
+    res.status(500).json({ error: 'Failed to publish/unpublish quiz' })
   }
 })
 

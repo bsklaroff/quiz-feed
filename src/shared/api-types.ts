@@ -1,3 +1,7 @@
+export interface SuccessRes {
+  success: boolean
+}
+
 export interface QuizItem {
   stem: string
   options: string[]
@@ -19,8 +23,12 @@ export interface EditQuizReq {
   additionalInstructions: string
 }
 
-export interface EditQuizRes {
-  success: boolean
+export interface PublishQuizReq {
+  quizId: string
+}
+
+export interface PublishQuizRes {
+  publishedAt: Date | null
 }
 
 export interface GetQuizRes {
@@ -30,6 +38,7 @@ export interface GetQuizRes {
   deletedItems: QuizItem[]
   sourceId: string
   createdAt: Date
+  publishedAt: Date | null
   source: {
     url: string
     title: string
