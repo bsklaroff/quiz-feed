@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useParams } from 'react-router'
+import { useState, useEffect, useCallback } from 'react'
+import { useParams, useSearchParams } from 'react-router'
 import { GetQuizRes, PublishQuizReq, PublishQuizRes } from '../shared/api-types'
 
 interface QuizResponse {
@@ -9,6 +9,7 @@ interface QuizResponse {
 
 function Quiz() {
   const { quizId } = useParams<{ quizId: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [quiz, setQuiz] = useState<GetQuizRes | null>(null)
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [responses, setResponses] = useState<QuizResponse[]>([])
@@ -18,8 +19,9 @@ function Quiz() {
   const [error, setError] = useState<string | null>(null)
   const [scheduledForDeletion, setScheduledForDeletion] = useState<Set<number>>(new Set())
   const [additionalInstructions, setAdditionalInstructions] = useState('')
+  const [revealedAnswers, setRevealedAnswers] = useState<Set<number>>(new Set())
 
-  const reloadQuiz = (quizId: string) => {
+  const reloadQuiz = useCallback((quizId: string) => {
     fetch(`/api/quiz/${quizId}`)
       .then((res) => {
         if (!res.ok) throw new Error('Quiz not found')
@@ -28,22 +30,46 @@ function Quiz() {
       .then((data: GetQuizRes) => {
         setQuiz(data)
         setResponses(new Array(data.items.length).fill({ selectedOption: null, isCorrect: null }))
-        setCurrentQuestion(0)
         setScheduledForDeletion(new Set())
         setAdditionalInstructions('')
-        setShowResults(false)
+        setRevealedAnswers(new Set())
         setInitialLoading(false)
+        // Set initial URL parameter if none exists
+        if (!searchParams.get('q') && !searchParams.get('results')) {
+          setSearchParams({ q: '1' })
+        }
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : 'An error occurred')
         setInitialLoading(false)
       })
-  }
+  }, [searchParams, setSearchParams])
 
+  // Initial quiz load
   useEffect(() => {
-    if (!quizId) return
+    if (!quizId || quiz) return
     reloadQuiz(quizId)
-  }, [quizId])
+  }, [quizId, quiz, reloadQuiz])
+
+  // Sync state with URL parameters
+  useEffect(() => {
+    if (!quiz) return
+
+    const questionParam = searchParams.get('q')
+    const resultsParam = searchParams.get('results')
+
+    if (resultsParam === 'true') {
+      setShowResults(true)
+    } else if (questionParam) {
+      const questionNumber = parseInt(questionParam, 10)
+      if (questionNumber >= 1 && questionNumber <= quiz.items.length) {
+        setCurrentQuestion(questionNumber - 1)
+        setShowResults(false)
+      } else {
+        setSearchParams({ q: '1' })
+      }
+    }
+  }, [quiz, searchParams, setSearchParams])
 
   const handleOptionSelect = (optionIndex: number) => {
     if (!quiz || showResults) return
@@ -56,18 +82,19 @@ function Quiz() {
 
   const nextQuestion = () => {
     if (currentQuestion < quiz!.items.length - 1) {
-      setCurrentQuestion(currentQuestion + 1)
+      const nextQ = currentQuestion + 1
+      setSearchParams({ q: (nextQ + 1).toString() })
     } else {
-      setShowResults(true)
+      setSearchParams({ results: 'true' })
     }
   }
 
   const restartQuiz = () => {
     setResponses(new Array(quiz!.items.length).fill({ selectedOption: null, isCorrect: null }))
-    setCurrentQuestion(0)
     setScheduledForDeletion(new Set())
     setAdditionalInstructions('')
-    setShowResults(false)
+    setRevealedAnswers(new Set())
+    setSearchParams({ q: '1' })
   }
 
   const toggleDeletion = (index: number) => {
@@ -78,6 +105,12 @@ function Quiz() {
       newScheduled.add(index)
     }
     setScheduledForDeletion(newScheduled)
+  }
+
+  const revealAnswer = (index: number) => {
+    const newRevealed = new Set(revealedAnswers)
+    newRevealed.add(index)
+    setRevealedAnswers(newRevealed)
   }
 
   const replaceSelectedQuestions = async () => {
@@ -158,13 +191,19 @@ function Quiz() {
         <div className="space-y-6 mb-8">
           {quiz.items.map((item, index) => {
             const isScheduledForDeletion = scheduledForDeletion.has(index)
+            const isAnswered = responses[index].selectedOption !== null
+            const isRevealed = revealedAnswers.has(index)
+            const showAnswer = isAnswered || isRevealed
+
             return (
               <div key={index} className={`border rounded-lg p-6 relative ${
                 isScheduledForDeletion
                   ? 'border-red-500 bg-red-100'
-                  : responses[index].isCorrect
-                    ? 'border-green-300 bg-green-50'
-                    : 'border-red-300 bg-red-50'
+                  : isAnswered
+                    ? responses[index].isCorrect
+                      ? 'border-green-300 bg-green-50'
+                      : 'border-red-300 bg-red-50'
+                    : 'border-gray-300 bg-gray-50'
               }`}>
                 <button
                   onClick={() => toggleDeletion(index)}
@@ -178,7 +217,7 @@ function Quiz() {
                   ×
                 </button>
                 <h3 className={`font-semibold text-lg mb-3 ${isScheduledForDeletion ? 'line-through' : ''}`}>
-                  Question {index + 1}
+                  Question {index + 1} {!isAnswered && <span className="text-sm font-normal text-gray-500">(Not answered)</span>}
                 </h3>
                 <p className={`mb-4 text-gray-800 ${isScheduledForDeletion ? 'line-through' : ''}`}>
                   {item.stem}
@@ -188,9 +227,9 @@ function Quiz() {
                     <div
                       key={optionIndex}
                       className={`p-3 rounded border ${
-                        optionIndex === item.correctOption
+                        showAnswer && optionIndex === item.correctOption
                           ? 'border-green-500 bg-green-100 text-green-800'
-                          : optionIndex === responses[index].selectedOption
+                          : showAnswer && optionIndex === responses[index].selectedOption
                           ? 'border-red-500 bg-red-100 text-red-800'
                           : 'border-gray-200 bg-white'
                       } ${isScheduledForDeletion ? 'line-through' : ''}`}
@@ -199,18 +238,29 @@ function Quiz() {
                     </div>
                   ))}
                 </div>
-                <div className={`text-sm text-gray-600 bg-gray-100 p-3 rounded ${isScheduledForDeletion ? 'line-through' : ''}`}>
-                  <strong>Source:</strong> &quot;{item.sourceSnippet}&quot;
-                <a
-                  href={quiz.source.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-full hover:bg-blue-100 hover:border-blue-300 transition-colors no-underline ml-1"
-                >
-                  {quiz.source.favicon && <img src={quiz.source.favicon} alt="" className="w-3 h-3" />}
-                  {quiz.source.title}
-                  </a>
-                </div>
+                {showAnswer ? (
+                  <div className={`text-sm text-gray-600 bg-gray-100 p-3 rounded ${isScheduledForDeletion ? 'line-through' : ''}`}>
+                    <strong>Source:</strong> &quot;{item.sourceSnippet}&quot;
+                  <a
+                    href={quiz.source.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-full hover:bg-blue-100 hover:border-blue-300 transition-colors no-underline ml-1"
+                  >
+                    {quiz.source.favicon && <img src={quiz.source.favicon} alt="" className="w-3 h-3" />}
+                    {quiz.source.title}
+                    </a>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <button
+                      onClick={() => revealAnswer(index)}
+                      className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded transition-colors"
+                    >
+                      View Answer
+                    </button>
+                  </div>
+                )}
               </div>
             )
           })}
@@ -244,7 +294,7 @@ function Quiz() {
                   : 'bg-blue-500 hover:bg-blue-600 text-white'
             }`}
           >
-            {actionLoading === 'replace' ? 'Loading...' : scheduledForDeletion.size > 0 ? 'Replace Selected Questions and Restart' : 'Restart Quiz'}
+            {actionLoading === 'replace' ? 'Loading...' : scheduledForDeletion.size > 0 ? 'Replace Selected Questions' : 'Restart Quiz'}
           </button>
           <button
             onClick={() => { void togglePublish() }}
