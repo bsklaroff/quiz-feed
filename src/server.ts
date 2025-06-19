@@ -8,7 +8,7 @@ import Exa from 'exa-js'
 
 import db from './db/engine.ts'
 import { webpageTable, quizTable } from './db/schema.ts'
-import { SuccessRes, CreateQuizReq, CreateQuizRes, EditQuizReq, GetQuizRes, GetQuizzesRes, PublishQuizReq, PublishQuizRes } from './shared/api-types.ts'
+import { CreateQuizReq, CreateQuizRes, EditQuizReq, EditQuizRes, GetQuizRes, GetQuizzesRes, PublishQuizReq, PublishQuizRes } from './shared/api-types.ts'
 import { createQuiz, editQuiz } from './anthropic-api.ts'
 
 const exa = new Exa(process.env.QF_EXA_API_KEY)
@@ -52,11 +52,11 @@ app.get('/api/quizzes', async (_req, res) => {
   }
 })
 
-app.get('/api/quiz/:quizId', async (req, res) => {
+app.get('/api/quiz/:quizSlug', async (req, res) => {
   try {
-    const { quizId } = req.params
-    if (!quizId) {
-      res.status(400).json({ error: 'Quiz ID is required' })
+    const { quizSlug } = req.params
+    if (!quizSlug) {
+      res.status(400).json({ error: 'quizSlug is required' })
       return
     }
 
@@ -64,7 +64,7 @@ app.get('/api/quiz/:quizId', async (req, res) => {
       await db.select({ quiz: quizTable, webpage: webpageTable })
       .from(quizTable)
       .innerJoin(webpageTable, eq(quizTable.sourceId, webpageTable.id))
-      .where(eq(quizTable.id, quizId))
+      .where(eq(quizTable.slug, quizSlug))
       .limit(1)
     )
     if (!result) {
@@ -120,18 +120,18 @@ app.post('/api/create_quiz', async (req, res) => {
       .where(eq(quizTable.sourceId, webpage.id))
       .limit(1)
     )
-    let quizId = existingQuiz?.id
-    if (!quizId) {
+    let quizSlug = existingQuiz?.slug
+    if (!quizSlug) {
       const quizToInsert = await createQuiz(webpage)
       const [insertedQuiz] = (
         await db.insert(quizTable)
         .values(quizToInsert)
         .returning()
       )
-      quizId = insertedQuiz.id
+      quizSlug = insertedQuiz.slug
     }
 
-    res.json({ quizId } as CreateQuizRes)
+    res.json({ quizSlug } as CreateQuizRes)
   } catch (error) {
     console.error('Error creating quiz:', error)
     res.status(500).json({ error: 'Failed to create quiz' })
@@ -158,12 +158,14 @@ app.post('/api/edit_quiz', async (req, res) => {
       return
     }
 
-    const quizToUpdate = await editQuiz(result.webpage, result.quiz, deletedItemIdxs, additionalInstructions)
-    await db.update(quizTable)
-      .set(quizToUpdate)
-      .where(eq(quizTable.id, result.quiz.id))
+    const quizToInsert = await editQuiz(result.webpage, result.quiz, deletedItemIdxs, additionalInstructions)
+    const [insertedQuiz] = (
+      await db.insert(quizTable)
+      .values(quizToInsert)
+      .returning()
+    )
 
-    res.json({ success: true } as SuccessRes)
+    res.json({ quizSlug: insertedQuiz.slug } as EditQuizRes)
   } catch (error) {
     console.error('Error editing quiz:', error)
     res.status(500).json({ error: 'Failed to edit quiz' })

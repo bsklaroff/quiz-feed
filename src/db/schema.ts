@@ -1,4 +1,4 @@
-import { pgTable, uuid, timestamp, text, json, index } from 'drizzle-orm/pg-core'
+import { pgTable, AnyPgColumn, uuid, timestamp, text, json, index } from 'drizzle-orm/pg-core'
 import { InferInsertModel, InferSelectModel } from 'drizzle-orm'
 import { QuizItem } from '../shared/api-types.js'
 
@@ -20,9 +20,11 @@ export type Webpage = InferSelectModel<typeof webpageTable>
 export const quizTable = pgTable('quiz', {
   id: uuid().primaryKey().defaultRandom(),
   title: text().notNull(),
+  slug: text().notNull().unique(),
   items: json().$type<QuizItem[]>().notNull(),
   deletedItems: json().$type<QuizItem[]>().notNull().default([]),
   sourceId: uuid().references(() => webpageTable.id).notNull(),
+  parentId: uuid().references((): AnyPgColumn => quizTable.id),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   publishedAt: timestamp({ withTimezone: true }),
 })

@@ -12,7 +12,7 @@ createRoot(document.getElementById('root')!).render(
       <Routes>
         <Route path="/" element={<App />}>
           <Route index element={<Home />} />
-          <Route path="quiz/:quizId" element={<Quiz />} />
+          <Route path="quiz/:quizSlug" element={<Quiz />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

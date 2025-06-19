@@ -29,6 +29,13 @@
       "when": 1750220826392,
       "tag": "0003_add_published_at_to_quiz",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1750358963290,
+      "tag": "0004_add_slug_and_parent_id_to_quiz",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { randomBytes } from 'node:crypto'
 import { Webpage, QuizInsert, Quiz } from './db/schema'
 import { QuizItem } from './shared/api-types'
 
@@ -15,6 +16,7 @@ Your quiz should highlight the most surprising, thought-provoking, revealing, or
 Return your response as valid JSON in this exact format:
 {
   "title": "Quiz title here"
+  "slug": "quiz-url-slug-here"
   "items": [
     {
       "stem": "Question text here?",
@@ -31,6 +33,7 @@ Important requirements:
 - Each question should be based on actual content from the webpage
 - Include a relevant sourceSnippet for each question, copied exactly from the webpage
 - Make the quiz title catchy and BuzzFeed-style
+- Make the quiz slug 4 lower-case words separated by hyphens, related to the title
 - Return ONLY the JSON, no other text`
 
   const res = await anthropic.messages.create({
@@ -45,10 +48,23 @@ Important requirements:
   // Strip JSON code block wrapper if it exists
   responseText = responseText.replace(/^```(?:json)?\n?|\n?```$/g, '')
 
-  const quizToInsert = {
+  const parsedQuiz = {
     sourceId: webpage.id,
     ...JSON.parse(responseText),
   } as QuizInsert
+
+  // Make slug URL-safe and add random hash
+  const urlSafeSlug = parsedQuiz.slug
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+  const randomHash = randomBytes(3).toString('hex')
+
+  const quizToInsert = {
+    ...parsedQuiz,
+    slug: `${urlSafeSlug}-${randomHash}`,
+  }
   return quizToInsert
 }
 
@@ -125,10 +141,18 @@ Important requirements:
   responseText = responseText.replace(/^```(?:json)?\n?|\n?```$/g, '')
 
   const newItems = JSON.parse(responseText) as QuizItem[]
-  const quizToUpdate = {
+
+  // Strip old hash from slug and add new random hash
+  const baseSlug = quiz.slug.replace(/-[^-]*$/, '')
+  const randomHash = randomBytes(3).toString('hex')
+
+  const quizToInsert = {
     ...quiz,
     items: [...existingItems, ...newItems],
     deletedItems: allDeletedItems,
+    parentId: quiz.id,
+    id: undefined,
+    slug: `${baseSlug}-${randomHash}`,
   } as QuizInsert
-  return quizToUpdate
+  return quizToInsert
 }

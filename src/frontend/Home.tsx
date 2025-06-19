@@ -50,7 +50,7 @@ function Home() {
       }
 
       const data = await response.json() as CreateQuizRes
-      await navigate(`/quiz/${data.quizId}`)
+      await navigate(`/quiz/${data.quizSlug}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -103,7 +103,7 @@ function Home() {
               {recentQuizzes.slice(0, 5).map((quiz) => (
                 <div
                   key={quiz.id}
-                  onClick={() => { void navigate(`/quiz/${quiz.id}`) }}
+                  onClick={() => { void navigate(`/quiz/${quiz.slug}?q=1`) }}
                   className="p-4 bg-white rounded-lg shadow-sm border border-gray-200 hover:border-blue-300 hover:shadow-md cursor-pointer transition-all duration-200"
                 >
                   <div className="flex-1 min-w-0">

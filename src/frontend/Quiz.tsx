@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router'
-import { GetQuizRes, PublishQuizReq, PublishQuizRes } from '../shared/api-types'
+import { GetQuizRes, EditQuizRes, PublishQuizReq, PublishQuizRes } from '../shared/api-types'
 import LoadingDots from './LoadingDots'
 
 interface QuizResponse {
@@ -9,7 +9,7 @@ interface QuizResponse {
 }
 
 function Quiz() {
-  const { quizId } = useParams<{ quizId: string }>()
+  const { quizSlug } = useParams<{ quizSlug: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const [quiz, setQuiz] = useState<GetQuizRes | null>(null)
@@ -23,8 +23,8 @@ function Quiz() {
   const [additionalInstructions, setAdditionalInstructions] = useState('')
   const [revealedAnswers, setRevealedAnswers] = useState<Set<number>>(new Set())
 
-  const reloadQuiz = useCallback((quizId: string) => {
-    fetch(`/api/quiz/${quizId}`)
+  const reloadQuiz = useCallback((quizSlug: string) => {
+    fetch(`/api/quiz/${quizSlug}`)
       .then((res) => {
         if (!res.ok) throw new Error('Quiz not found')
         return res.json()
@@ -49,9 +49,9 @@ function Quiz() {
 
   // Initial quiz load
   useEffect(() => {
-    if (!quizId || quiz) return
-    reloadQuiz(quizId)
-  }, [quizId, quiz, reloadQuiz])
+    if (!quizSlug || quiz?.slug === quizSlug) return
+    reloadQuiz(quizSlug)
+  }, [quizSlug, quiz, reloadQuiz])
 
   // Sync state with URL parameters
   useEffect(() => {
@@ -133,7 +133,8 @@ function Quiz() {
       })
 
       if (response.ok) {
-        reloadQuiz(quiz.id)
+        const data = await response.json() as EditQuizRes
+        await navigate(`/quiz/${data.quizSlug}?results=true`)
       } else {
         setError('Failed to update quiz')
       }

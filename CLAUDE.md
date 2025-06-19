@@ -6,7 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - `pnpm run lint` - Run ESLint
 - `pnpm run dkgen --name migration_name` - Create a drizzle migration
-- `pnpm run dkmig` - Run the drizzle migrations
 
 ## Architecture Overview
 
@@ -68,6 +67,7 @@ This is a full-stack quiz application that generates BuzzFeed-style quizzes from
 - Backend code should never import from the src/frontend folder
 - Frontend code should only import the src/frontend and src/shared folders (as well as third-party libs)
 - Any code imported by both frontend and backend should be placed in the src/shared folder. Code inside this folder should not import anything from outside this folder (except third-party libs)
-- For every route, define the response type in src/shared/api-types.ts, and use 'as' notation to specify the type that is returned from the route via res.json(). These types should also be explicitly used in the frontend. Don't create a new response type if the a suitable one already exists. For example, use SuccessRes for all responses that just require an ack from the server.
+- For every route, define the response type in src/shared/api-types.ts, and use 'as' notation to specify the type that is returned from the route via res.json(). These types should also be explicitly used in the frontend. Don't create a new response type if the a suitable one already exists, just rename it to be more encompassing
 - For every POST route, additionally specify the request type in src/shared/api-types.ts, and use 'as' notation to specify the type of req.body. These types should also be explicitly used in the frontend.
 - Update the "Architecture Overview" in CLAUDE.md whenever anything relevant changes, to keep it up to date
+- Only create drizzle migrations, don't actually run them (let the user do that separately).
