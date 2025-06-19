@@ -1,7 +1,11 @@
 import { drizzle } from 'drizzle-orm/node-postgres'
 
+const dbUrl = process.env.QF_DB_URL!.includes('localhost')
+  ? process.env.QF_DB_URL!
+  : process.env.QF_DB_URL! + '?sslmode=no-verify'
+
 const db = drizzle({
-  connection: process.env.QF_DB_URL!,
+  connection: dbUrl,
   casing: 'snake_case',
 })
 
