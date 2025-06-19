@@ -18,12 +18,16 @@ if (args.values.prod) {
   ViteExpress.config({ mode: 'production' })
 }
 
-const PORT = 3000
+const PORT = 7171
 const app = express()
 const server = createServer((req, res) => { void app(req, res) })
 
 app.use(express.json())
 app.use(morgan('dev'))
+
+app.get('/healthcheck', (_req, res) => {
+  res.status(200).send()
+})
 
 app.get('/api/quizzes', async (_req, res) => {
   try {
