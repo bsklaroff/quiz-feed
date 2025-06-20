@@ -11,7 +11,7 @@ export async function createQuiz(webpage: Webpage): Promise<QuizInsert> {
 Title: ${webpage.title}
 Content: ${webpage.text}
 
-Your quiz should highlight the most surprising, thought-provoking, revealing, or shocking details about the content. Each question should have 4 multiple choice options (A, B, C, D) with exactly one correct answer.
+Your quiz should highlight the most surprising, thought-provoking, or revealing details about the content. Each question should have 4 multiple choice options (A, B, C, D) with exactly one correct answer.
 
 Return your response as valid JSON in this exact format:
 {
@@ -104,7 +104,7 @@ Title: ${webpage.title}
 Content: ${webpage.text}${existingQuestionsContext}${deletedQuestionsContext}${additionalInstructionsContext}
 
 Your new questions should:
-- Highlight the most surprising, thought-provoking, revealing, or shocking details about the content
+- Highlight the most surprising, thought-provoking, or revealing details about the content
 - NOT repeat or be too similar to the existing questions
 - NOT repeat or be too similar to the previously deleted questions
 - Each question should have 4 multiple choice options (A, B, C, D) with exactly one correct answer${additionalInstructions ? `
@@ -125,7 +125,6 @@ Important requirements:
 - correctOption should be the index (0-3) of the correct answer
 - Each question should be based on actual content from the webpage
 - Include a relevant sourceSnippet for each question, copied exactly from the webpage
-- Make the quiz title catchy and BuzzFeed-style
 - Return ONLY the JSON, no other text`
 
   const res = await anthropic.messages.create({
