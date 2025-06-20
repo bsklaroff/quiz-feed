@@ -5,13 +5,19 @@ import { QuizItem } from './shared/api-types'
 
 const anthropic = new Anthropic({ apiKey: process.env.QF_ANTHROPIC_API_KEY })
 
+function cachedQuizPrompt(title: string, text: string): string {
+  return `Generate BuzzFeed-style multiple-choice quiz questions based on the following webpage content:
+
+Title: ${title}
+Content: ${text}
+`
+}
+
 export async function createQuiz(webpage: Webpage): Promise<QuizInsert> {
-  const prompt = `Create a BuzzFeed-style multiple-choice quiz with exactly 10 questions based on the following webpage content:
+  const cachedPromptPart = cachedQuizPrompt(webpage.title, webpage.text)
 
-Title: ${webpage.title}
-Content: ${webpage.text}
-
-Your quiz should highlight the most surprising, thought-provoking, or revealing details about the content. Each question should have 4 multiple choice options (A, B, C, D) with exactly one correct answer.
+  const dynamicPromptPart = `
+Create exactly 10 questions for a complete quiz. Your quiz should highlight the most surprising, thought-provoking, or revealing details about the content. Each question should have 4 multiple choice options (A, B, C, D) with exactly one correct answer.
 
 Return your response as valid JSON in this exact format:
 {
@@ -39,7 +45,17 @@ Important requirements:
   const res = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 8192,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [{
+      role: 'user',
+      content: [{
+        type: 'text',
+        text: cachedPromptPart,
+        cache_control: { type: 'ephemeral' },
+      }, {
+        type: 'text',
+        text: dynamicPromptPart,
+      }],
+    }],
   })
   if (res.content[0].type !== 'text') {
     throw new Error(`Unexpected response from Anthropic API: {res}`)
@@ -83,27 +99,19 @@ export async function editQuiz(
     throw new Error('Quiz already has 10 or more items')
   }
 
-  // Combine items to delete with previously deleted items
-  const allDeletedItems = [...quiz.deletedItems, ...itemsToDelete]
-
-  const deletedQuestionsContext = allDeletedItems.length > 0
-    ? `\n\nPreviously deleted questions to avoid repeating:\n${allDeletedItems.map((item, i) => `${i + 1}. ${item.stem}`).join('\n')}`
-    : ''
+  const cachedPromptPart = cachedQuizPrompt(webpage.title, webpage.text)
 
   const existingQuestionsContext = existingItems.length > 0
-    ? `\n\nExisting questions in the quiz:\n${existingItems.map((item, i) => `${i + 1}. ${item.stem}`).join('\n')}`
+    ? `\nExisting questions in the quiz:\n${existingItems.map((item, i) => `${i + 1}. ${item.stem}`).join('\n')}\n`
     : ''
 
-  const additionalInstructionsContext = additionalInstructions
-    ? `\n\nAdditional instructions for the new questions: ${additionalInstructions}`
+  const allDeletedItems = [...quiz.deletedItems, ...itemsToDelete]
+  const deletedQuestionsContext = allDeletedItems.length > 0
+    ? `\nPreviously deleted questions to avoid repeating:\n${allDeletedItems.map((item, i) => `${i + 1}. ${item.stem}`).join('\n')}\n`
     : ''
 
-  const prompt = `Create ${newItemsNeeded} new BuzzFeed-style multiple-choice questions to add to an existing quiz based on the following webpage content:
-
-Title: ${webpage.title}
-Content: ${webpage.text}${existingQuestionsContext}${deletedQuestionsContext}${additionalInstructionsContext}
-
-Your new questions should:
+  const dynamicPromptPart = `${existingQuestionsContext}${deletedQuestionsContext}
+Create exactly ${newItemsNeeded} new questions to add to the existing quiz. Your new questions should:
 - Highlight the most surprising, thought-provoking, or revealing details about the content
 - NOT repeat or be too similar to the existing questions
 - NOT repeat or be too similar to the previously deleted questions
@@ -130,7 +138,17 @@ Important requirements:
   const res = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 8192,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [{
+      role: 'user',
+      content: [{
+        type: 'text',
+        text: cachedPromptPart,
+        cache_control: { type: 'ephemeral' },
+      }, {
+        type: 'text',
+        text: dynamicPromptPart,
+      }],
+    }],
   })
   if (res.content[0].type !== 'text') {
     throw new Error(`Unexpected response from Anthropic API: {res}`)
