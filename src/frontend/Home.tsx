@@ -100,7 +100,7 @@ function Home() {
             <div className="text-center text-gray-500">No quizzes created yet</div>
           ) : (
             <div className="space-y-3">
-              {recentQuizzes.slice(0, 5).map((quiz) => (
+              {recentQuizzes.map((quiz) => (
                 <div
                   key={quiz.id}
                   onClick={() => { void navigate(`/quiz/${quiz.slug}?q=1`) }}
