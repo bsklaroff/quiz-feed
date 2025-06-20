@@ -285,11 +285,11 @@ function Quiz() {
           </div>
         )}
 
-        <div className="text-center space-x-4">
+        <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
           <button
             onClick={scheduledForDeletion.size > 0 ? replaceSelectedQuestions : restartQuiz}
             disabled={actionLoading !== null}
-            className={`font-semibold py-3 px-6 rounded-lg transition-colors ${
+            className={`w-full sm:w-auto font-semibold py-3 px-6 rounded-lg transition-colors ${
               actionLoading !== null
                 ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
                 : scheduledForDeletion.size > 0
@@ -302,7 +302,7 @@ function Quiz() {
           <button
             onClick={() => { void togglePublish() }}
             disabled={actionLoading !== null}
-            className={`font-semibold py-3 px-6 rounded-lg transition-colors ${
+            className={`w-full sm:w-auto font-semibold py-3 px-6 rounded-lg transition-colors ${
               actionLoading !== null
                 ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
                 : quiz.publishedAt
@@ -314,7 +314,7 @@ function Quiz() {
           </button>
           <button
             onClick={() => { void navigate('/') }}
-            className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors cursor-pointer"
+            className="w-full sm:w-auto bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors cursor-pointer"
           >
             Go to Home Page
           </button>
