@@ -2,6 +2,8 @@ import express from 'express'
 import morgan from 'morgan'
 import { createServer } from 'node:http'
 import { parseArgs } from 'node:util'
+import { createWriteStream } from 'node:fs'
+import { join } from 'node:path'
 import ViteExpress from 'vite-express'
 import { eq, desc, isNotNull } from 'drizzle-orm'
 import Exa from 'exa-js'
@@ -22,8 +24,11 @@ const PORT = 7171
 const app = express()
 const server = createServer((req, res) => { void app(req, res) })
 
+const logStream = createWriteStream(join(process.cwd(), 'qf.log'), { flags: 'a' })
+
 app.use(express.json())
 app.use(morgan('dev'))
+app.use(morgan('dev', { stream: logStream }))
 
 app.get('/healthcheck', (_req, res) => {
   res.status(200).send()
