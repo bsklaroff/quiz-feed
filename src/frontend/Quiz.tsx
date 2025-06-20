@@ -73,6 +73,11 @@ function Quiz() {
     }
   }, [quiz, searchParams, setSearchParams])
 
+  // Scroll to top when navigation params change
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [searchParams])
+
   const handleOptionSelect = (optionIndex: number) => {
     if (!quiz || showResults) return
 
@@ -80,6 +85,25 @@ function Quiz() {
     const newResponses = [...responses]
     newResponses[currentQuestion] = { selectedOption: optionIndex, isCorrect }
     setResponses(newResponses)
+
+    // Smooth scroll to ensure the entire question is visible
+    setTimeout(() => {
+      const questionContainer = document.getElementById('question-container')
+      if (questionContainer) {
+        const rect = questionContainer.getBoundingClientRect()
+        const viewportHeight = window.innerHeight
+
+        // Check if the entire question is visible
+        if (rect.top < 0 || rect.bottom > viewportHeight) {
+          // Scroll to show the question with some padding from the top
+          const scrollTop = window.pageYOffset + rect.top - 20
+          window.scrollTo({
+            top: Math.max(0, scrollTop),
+            behavior: 'smooth'
+          })
+        }
+      }
+    }, 100)
   }
 
   const nextQuestion = () => {
@@ -338,7 +362,7 @@ function Quiz() {
         </div>
       </div>
 
-      <div className="bg-white border rounded-lg p-6 shadow-sm">
+      <div id="question-container" className="bg-white border rounded-lg p-6 shadow-sm">
         <h2 className="text-xl font-semibold mb-6">{currentItem.stem}</h2>
 
         <div className="space-y-3 mb-6">

@@ -71,3 +71,4 @@ This is a full-stack quiz application that generates BuzzFeed-style quizzes from
 - For every POST route, additionally specify the request type in src/shared/api-types.ts, and use 'as' notation to specify the type of req.body. These types should also be explicitly used in the frontend.
 - Update the "Architecture Overview" in CLAUDE.md whenever anything relevant changes, to keep it up to date
 - Only create drizzle migrations, don't actually run them (let the user do that separately).
+- Don't add any trailing spaces, or any spaces on empty lines
