@@ -164,12 +164,12 @@ Important requirements:
   const randomHash = randomBytes(3).toString('hex')
 
   const quizToInsert = {
-    ...quiz,
+    title: quiz.title,
+    slug: `${baseSlug}-${randomHash}`,
     items: [...existingItems, ...newItems],
     deletedItems: allDeletedItems,
+    sourceId: quiz.sourceId,
     parentId: quiz.id,
-    id: undefined,
-    slug: `${baseSlug}-${randomHash}`,
   } as QuizInsert
   return quizToInsert
 }
