@@ -1,11 +1,21 @@
+import _ from 'lodash'
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router'
-import { GetQuizRes, EditQuizRes, PublishQuizReq, PublishQuizRes } from '../shared/api-types'
+import { GetQuizRes, EditQuizRes, PublishQuizReq, PublishQuizRes, QuizItem } from '../shared/api-types'
 import LoadingDots from './LoadingDots'
 
 interface QuizResponse {
   selectedOption: number | null
   isCorrect: boolean | null
+}
+
+function randomizeQuizOptions(items: QuizItem[]): void {
+  items.forEach(item => {
+    const optionsWithIndex = item.options.map((option, index) => ({ option, originalIndex: index }))
+    const shuffledOptions = _.shuffle(optionsWithIndex)
+    item.options = shuffledOptions.map(option => option.option)
+    item.correctOption = shuffledOptions.findIndex(option => option.originalIndex === item.correctOption)
+  })
 }
 
 function Quiz() {
@@ -31,6 +41,7 @@ function Quiz() {
         return res.json()
       })
       .then((data: GetQuizRes) => {
+        randomizeQuizOptions(data.items)
         setQuiz(data)
         setResponses(new Array(data.items.length).fill({ selectedOption: null, isCorrect: null }))
         setScheduledForDeletion(new Set())
@@ -117,6 +128,7 @@ function Quiz() {
   }
 
   const restartQuiz = () => {
+    randomizeQuizOptions(quiz!.items)
     setResponses(new Array(quiz!.items.length).fill({ selectedOption: null, isCorrect: null }))
     setScheduledForDeletion(new Set())
     setAdditionalInstructions('')
