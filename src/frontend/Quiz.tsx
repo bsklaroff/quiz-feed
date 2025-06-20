@@ -19,6 +19,7 @@ function Quiz() {
   const [initialLoading, setInitialLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<'replace' | 'publish' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [scheduledForDeletion, setScheduledForDeletion] = useState<Set<number>>(new Set())
   const [additionalInstructions, setAdditionalInstructions] = useState('')
   const [revealedAnswers, setRevealedAnswers] = useState<Set<number>>(new Set())
@@ -99,7 +100,7 @@ function Quiz() {
           const scrollTop = window.pageYOffset + rect.top - 20
           window.scrollTo({
             top: Math.max(0, scrollTop),
-            behavior: 'smooth'
+            behavior: 'smooth',
           })
         }
       }
@@ -144,6 +145,7 @@ function Quiz() {
 
     try {
       setActionLoading('replace')
+      setActionError(null)
       const response = await fetch(`/api/edit_quiz`, {
         method: 'POST',
         headers: {
@@ -160,10 +162,11 @@ function Quiz() {
         const data = await response.json() as EditQuizRes
         await navigate(`/quiz/${data.quizSlug}?results=true`)
       } else {
-        setError('Failed to update quiz')
+        const errorData = await response.json().catch(() => null) as { error?: string } | null
+        setActionError(errorData?.error || 'Failed to update quiz')
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      setActionError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setActionLoading(null)
     }
@@ -174,6 +177,7 @@ function Quiz() {
 
     try {
       setActionLoading('publish')
+      setActionError(null)
       const response = await fetch(`/api/toggle_publish_quiz`, {
         method: 'POST',
         headers: {
@@ -188,10 +192,11 @@ function Quiz() {
         const data = await response.json() as PublishQuizRes
         setQuiz(prev => prev ? { ...prev, publishedAt: data.publishedAt } : null)
       } else {
-        setError('Failed to publish/unpublish quiz')
+        const errorData = await response.json().catch(() => null) as { error?: string } | null
+        setActionError(errorData?.error || 'Failed to publish/unpublish quiz')
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      setActionError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setActionLoading(null)
     }
@@ -309,39 +314,46 @@ function Quiz() {
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-          <button
-            onClick={scheduledForDeletion.size > 0 ? replaceSelectedQuestions : restartQuiz}
-            disabled={actionLoading !== null}
-            className={`w-full sm:w-auto font-semibold py-3 px-6 rounded-lg transition-colors ${
-              actionLoading !== null
-                ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                : scheduledForDeletion.size > 0
-                  ? 'bg-red-500 hover:bg-red-600 text-white cursor-pointer'
-                  : 'bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
-            }`}
-          >
-            {actionLoading === 'replace' ? <LoadingDots text="Loading" /> : scheduledForDeletion.size > 0 ? 'Replace Selected Questions' : 'Restart Quiz'}
-          </button>
-          <button
-            onClick={() => { void togglePublish() }}
-            disabled={actionLoading !== null}
-            className={`w-full sm:w-auto font-semibold py-3 px-6 rounded-lg transition-colors ${
-              actionLoading !== null
-                ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                : quiz.publishedAt
-                  ? 'bg-orange-500 hover:bg-orange-600 text-white cursor-pointer'
-                  : 'bg-green-500 hover:bg-green-600 text-white cursor-pointer'
-            }`}
-          >
-            {quiz.publishedAt ? 'Unpublish from Home Page' : 'Publish to Home Page'}
-          </button>
-          <button
-            onClick={() => { void navigate('/') }}
-            className="w-full sm:w-auto bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors cursor-pointer"
-          >
-            Go to Home Page
-          </button>
+        <div className="flex flex-col justify-center items-center gap-4">
+          {actionError && (
+            <div className="text-red-600 text-sm text-center">
+              {actionError}
+            </div>
+          )}
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
+            <button
+              onClick={scheduledForDeletion.size > 0 ? replaceSelectedQuestions : restartQuiz}
+              disabled={actionLoading !== null}
+              className={`w-full sm:w-auto font-semibold py-3 px-6 rounded-lg transition-colors ${
+                actionLoading !== null
+                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                  : scheduledForDeletion.size > 0
+                    ? 'bg-red-500 hover:bg-red-600 text-white cursor-pointer'
+                    : 'bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
+              }`}
+            >
+              {actionLoading === 'replace' ? <LoadingDots text="Loading" /> : scheduledForDeletion.size > 0 ? 'Replace Selected Questions' : 'Restart Quiz'}
+            </button>
+            <button
+              onClick={() => { void togglePublish() }}
+              disabled={actionLoading !== null}
+              className={`w-full sm:w-auto font-semibold py-3 px-6 rounded-lg transition-colors ${
+                actionLoading !== null
+                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                  : quiz.publishedAt
+                    ? 'bg-orange-500 hover:bg-orange-600 text-white cursor-pointer'
+                    : 'bg-green-500 hover:bg-green-600 text-white cursor-pointer'
+              }`}
+            >
+              {quiz.publishedAt ? 'Unpublish from Home Page' : 'Publish to Home Page'}
+            </button>
+            <button
+              onClick={() => { void navigate('/') }}
+              className="w-full sm:w-auto bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors cursor-pointer"
+            >
+              Go to Home Page
+            </button>
+          </div>
         </div>
       </div>
     )

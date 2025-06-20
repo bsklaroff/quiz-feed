@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import ViteExpress from 'vite-express'
 import { eq, desc, isNotNull } from 'drizzle-orm'
 import Exa from 'exa-js'
+import { APIError } from '@anthropic-ai/sdk'
 
 import db from './db/engine.ts'
 import { webpageTable, quizTable } from './db/schema.ts'
@@ -143,7 +144,12 @@ app.post('/api/create_quiz', async (req, res) => {
     res.json({ quizSlug } as CreateQuizRes)
   } catch (error) {
     console.error('Error creating quiz:', error)
+    if (error instanceof APIError && error.status === 429) {
+      res.status(500).json({ error: 'Rate limit exceeded. Please try again in a minute.' })
+      return
+    }
     res.status(500).json({ error: 'Failed to create quiz' })
+    console.log(error)
   }
 })
 
@@ -177,6 +183,10 @@ app.post('/api/edit_quiz', async (req, res) => {
     res.json({ quizSlug: insertedQuiz.slug } as EditQuizRes)
   } catch (error) {
     console.error('Error editing quiz:', error)
+    if (error instanceof APIError && error.status === 429) {
+      res.status(500).json({ error: 'Rate limit exceeded. Please try again in a minute.' })
+      return
+    }
     res.status(500).json({ error: 'Failed to edit quiz' })
   }
 })
